@@ -5,9 +5,18 @@ import numpy as np
 import random
 import time
 import math
+from enum import Enum
 
-playground_dims = (10, 10)
-head_vision_radius = 3
+
+class Direction(Enum):
+    UP = 0
+    DOWN = 1
+    RIGHT = 2
+    LEFT = 3
+
+
+playground_dims = (100, 100)
+head_vision_radius = 4
 
 
 def print_playground(playground_matrix):
@@ -63,13 +72,14 @@ class Snake:
         x_head = self.head[0]
         y_head = self.head[1]
         x_fruit = self.fruit[0]
-        y_fruit = self.fruit[0]
+        y_fruit = self.fruit[1]
 
         # ate the fruit
         if x_head == x_fruit and y_head == y_fruit:
+            self.fruit = self.__select_random_coordinates_for_fruit()
             return 100
         # one block distant from the fruit
-        if (math.fabs(x_head - x_fruit) == 1 and math.fabs(x_head - x_fruit)) == 0 or (math.fabs(x_head - x_fruit) == 0 and math.fabs(x_head - x_fruit)) == 1:
+        if (math.fabs(x_head - x_fruit) == 1 and math.fabs(y_head - y_fruit) == 0) or (math.fabs(x_head - x_fruit) == 0 and math.fabs(y_head - y_fruit) == 1):
             return 5
         # gets one block away from the fruit
         if (math.fabs(x_head - x_fruit) + math.fabs(y_head - y_fruit)) > (math.fabs(x_prev_head - x_fruit) + math.fabs(y_prev_head - y_fruit)):
@@ -93,7 +103,7 @@ class Snake:
                 [(start_index_coordinates[1] + j) % playground_dims[1]]
         return vision_matrix
 
-    def __move_body(self):
+    def __update_matrix(self):
 
         x_head = self.head[0]
         y_head = self.head[1]
@@ -112,87 +122,65 @@ class Snake:
         self.playground_matrix[self.head[0]][self.head[1]] = 1
 
         if self.head == self.fruit:
-            self.fruit = self.__select_random_coordinates_for_fruit()
+            pass
         else:
             erased_tail = self.body.pop(0)
             self.playground_matrix[erased_tail[0]][erased_tail[1]] = 0
 
-    def move_up(self):
-        x = self.head[0]
-        y = self.head[1]
+    def move(self, direction):
+
+        self.current_direction = direction
+
+        prev_x = self.head[0]
+        prev_y = self.head[1]
 
         # new head
-        self.head = (x, (y+1) % playground_dims[1])
-        self.__move_body()
-        return self.__get_visible_environment()
+        if direction == Direction.UP:
+            self.head = (prev_x, (prev_y+1) % playground_dims[1])
+        elif direction == Direction.DOWN:
+            self.head = (prev_x, (prev_y - 1) % playground_dims[1])
+        elif direction == Direction.RIGHT:
+            self.head = ((prev_x + 1) % playground_dims[0], prev_y)
+        elif direction == Direction.LEFT:
+            self.head = ((prev_x - 1) % playground_dims[0], prev_y)
 
-    def move_down(self):
-        x = self.head[0]
-        y = self.head[1]
-
-        # new head
-        self.head = (x, (y - 1) % playground_dims[1])
-        self.__move_body()
-        return self.__get_visible_environment()
-
-    def move_right(self):
-        x = self.head[0]
-        y = self.head[1]
-
-        # new head
-        self.head = ((x + 1) % playground_dims[0], y)
-        self.__move_body()
-        return self.__get_visible_environment()
-
-    def move_left(self):
-        x = self.head[0]
-        y = self.head[1]
-
-        # new head
-        self.head = ((x - 1) % playground_dims[0], y)
-        self.__move_body()
-        return self.__get_visible_environment()
+        self.__update_matrix()
+        return self.__get_visible_environment(), self.__calculate_award((prev_x, prev_y))
 
     def __is_invalid_direction(self, direction):
 
         if self.current_direction is None:
             return False
 
-        if direction == 0:
-            if self.current_direction == 1:
+        if direction == Direction.UP:
+            if self.current_direction == Direction.DOWN:
                 return True
-        elif direction == 1:
-            if self.current_direction == 0:
+        elif direction == Direction.DOWN:
+            if self.current_direction == Direction.UP:
                 return True
-        elif direction == 2:
-            if self.current_direction == 3:
+        elif direction == Direction.RIGHT:
+            if self.current_direction == Direction.LEFT:
                 return True
-        elif direction == 3:
-            if self.current_direction == 2:
+        elif direction == Direction.LEFT:
+            if self.current_direction == Direction.RIGHT:
                 return True
 
     def start_random_movement(self):
         while True:
 
-            movement_direction = random.randint(0, 3)
+            movement_direction = Direction(random.randint(0, 3))
 
             if self.__is_invalid_direction(movement_direction):
                 continue
 
-            self.current_direction = movement_direction
-
-            if movement_direction == 0:
-                print(self.move_up())
-            elif movement_direction == 1:
-                print(self.move_down())
-            elif movement_direction == 2:
-                print(self.move_right())
-            elif movement_direction == 3:
-                print(self.move_left())
+            print('action : ', movement_direction)
+            state, reward = self.move(movement_direction)
+            print('state : \n', state)
+            print('reward : ', reward)
 
             print("############################################################################################3")
-            print_playground(self.playground_matrix)
             time.sleep(0.5)
+
 
 if __name__ == "__main__":
     snake = Snake()
